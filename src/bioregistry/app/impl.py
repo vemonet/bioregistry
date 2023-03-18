@@ -5,7 +5,7 @@ from pathlib import Path
 from textwrap import dedent
 from typing import TYPE_CHECKING, Any, Mapping, Optional, Union
 
-from curies.mapping_service import get_flask_mapping_blueprint
+from curies.mapping_service import get_fastapi_mapping_app
 from flasgger import Swagger
 from flask import Flask
 from flask_bootstrap import Bootstrap4
@@ -170,9 +170,14 @@ def get_app(
     app.register_blueprint(api_blueprint)
     app.register_blueprint(ui_blueprint)
 
-    sparql_blueprint = get_flask_mapping_blueprint(app.manager.converter)
-    app.register_blueprint(sparql_blueprint)
-
     # Make manager available in all jinja templates
     app.jinja_env.globals.update(manager=app.manager, curie_to_str=curie_to_str)
-    return app
+
+    from fastapi.middleware.wsgi import WSGIMiddleware
+    # Build the FastAPI app, only serving the SPARQL endpoint on /sparql
+    fastapi_app = get_fastapi_mapping_app(app.manager.converter)
+
+    # Mount flask on the root to serve all other routes
+    fastapi_app.mount("/", WSGIMiddleware(app))
+
+    return fastapi_app

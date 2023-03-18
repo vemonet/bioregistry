@@ -42,10 +42,12 @@ __all__ = [
     show_default=True,
     help="Base URL for app",
 )
+@click.option("--with-uvicorn", is_flag=True, type=bool, default=False, help="Deploy with uvicorn for development")
 def web(
     host: str,
     port: str,
     with_gunicorn: bool,
+    with_uvicorn: bool,
     workers: int,
     debug: bool,
     timeout: Optional[int],
@@ -76,12 +78,20 @@ def web(
         and collections is None
         and contexts is None,
     )
-    run_app(
-        app=app,
-        host=host,
-        port=port,
-        workers=workers,
-        with_gunicorn=with_gunicorn,
-        debug=debug,
-        timeout=timeout,
-    )
+    if with_uvicorn:
+        # TODO: Hotfix to use uvicorn in development, might want to be improved
+        import uvicorn
+        log_level="info"
+        if debug:
+            log_level = "debug"
+        uvicorn.run(app, port=port, log_level=log_level, host=host)
+    else:
+        run_app(
+            app=app,
+            host=host,
+            port=port,
+            workers=workers,
+            with_gunicorn=with_gunicorn,
+            debug=debug,
+            timeout=timeout,
+        )
